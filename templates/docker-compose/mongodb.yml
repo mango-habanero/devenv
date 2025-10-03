@@ -1,0 +1,72 @@
+# =============================================================================
+# MongoDB Development Database
+# Purpose: Single MongoDB container for local development
+# =============================================================================
+
+services:
+  mongodb:
+    image: mongo:8.0
+    container_name: ${MONGO_CONTAINER_NAME:-dev-mongodb}
+    restart: unless-stopped
+
+    environment:
+      # Root user credentials
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-rootpass}
+
+      # Default database
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-devdb}
+
+    ports:
+      - "27017:27017"
+
+    volumes:
+      # Named volumes for data and configuration
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+
+      # Optional: Mount init scripts
+      # - ./init-scripts:/docker-entrypoint-initdb.d
+
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+
+# =============================================================================
+# Usage:
+#   docker compose -f mongodb.yml up -d
+#   docker compose -f mongodb.yml down
+#   docker compose -f mongodb.yml down -v  # Remove volumes
+#
+# Connect:
+#   Host: localhost
+#   Port: 27017
+#   User: root
+#   Password: rootpass
+#   Auth Database: admin
+#
+# Connection string:
+#   mongodb://root:rootpass@localhost:27017/devdb?authSource=admin
+#
+# CLI Access:
+#   docker exec -it dev-mongodb mongosh -u root -p rootpass --authenticationDatabase admin
+# =============================================================================
