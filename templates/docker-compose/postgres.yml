@@ -1,0 +1,68 @@
+# =============================================================================
+# PostgreSQL Development Database
+# Purpose: Single PostgreSQL container for local development
+# =============================================================================
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ${PG_CONTAINER_NAME:-dev-postgres}
+    restart: unless-stopped
+
+    environment:
+      # Database configuration
+      POSTGRES_USER: ${PG_USER:-postgres}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-devpass}
+      POSTGRES_DB: ${PG_DB:-devdb}
+
+
+      # Performance tuning for development
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      # Named volume for data persistence
+      - postgres_data:/var/lib/postgresql/data
+
+      # Optional: Mount init scripts
+      # - ./init-scripts:/docker-entrypoint-initdb.d
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    # Resource limits (adjust for your machine)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  postgres_data:
+    driver: local
+
+# =============================================================================
+# Usage:
+#   docker compose -f postgres.yml up -d
+#   docker compose -f postgres.yml down
+#   docker compose -f postgres.yml down -v  # Remove volumes
+#
+# Connect:
+#   Host: localhost
+#   Port: 5432
+#   User: postgres
+#   Password: devpass
+#   Database: devdb
+#
+# Connection string:
+#   postgresql://postgres:devpass@localhost:5432/devdb
+# =============================================================================

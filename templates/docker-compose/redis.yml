@@ -1,0 +1,66 @@
+# =============================================================================
+# Redis Development Cache/Queue
+# Purpose: Single Redis container for local development
+# =============================================================================
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: ${REDIS_CONTAINER_NAME:-dev-redis}
+    restart: unless-stopped
+
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-devpass}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      # Named volume for data persistence
+      - redis_data:/data
+
+      # Optional: Custom redis configuration
+      # - ./redis.conf:/usr/local/etc/redis/redis.conf
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+volumes:
+  redis_data:
+    driver: local
+
+# =============================================================================
+# Usage:
+#   docker compose -f redis.yml up -d
+#   docker compose -f redis.yml down
+#   docker compose -f redis.yml down -v  # Remove volumes
+#
+# Connect:
+#   Host: localhost
+#   Port: 6379
+#   Password: devpass
+#
+# Connection string:
+#   redis://:devpass@localhost:6379/0
+#
+# CLI Access:
+#   docker exec -it dev-redis redis-cli -a devpass
+# =============================================================================

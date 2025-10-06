@@ -1,0 +1,80 @@
+# =============================================================================
+# MySQL Development Database
+# Purpose: Single MySQL container for local development
+# =============================================================================
+
+services:
+  mysql:
+    image: mysql:9.1-oracle
+    container_name: ${MYSQL_CONTAINER_NAME:-dev-mysql}
+    restart: unless-stopped
+
+    environment:
+      # Root user credentials
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+
+      # Application database and user
+      MYSQL_DATABASE: ${MYSQL_DB:-devdb}
+      MYSQL_USER: ${MYSQL_USER:-devuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-devpass}
+
+      # Character set configuration
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=200
+      --innodb_buffer_pool_size=256M
+
+    ports:
+      - "3306:3306"
+
+    volumes:
+      # Named volume for data persistence
+      - mysql_data:/var/lib/mysql
+
+      # Optional: Mount init scripts
+      # - ./init-scripts:/docker-entrypoint-initdb.d
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  mysql_data:
+    driver: local
+
+# =============================================================================
+# Usage:
+#   docker compose -f mysql.yml up -d
+#   docker compose -f mysql.yml down
+#   docker compose -f mysql.yml down -v  # Remove volumes
+#
+# Connect:
+#   Host: localhost
+#   Port: 3306
+#   User: devuser (or root)
+#   Password: devpass (or rootpass for root)
+#   Database: devdb
+#
+# Connection string:
+#   mysql://devuser:devpass@localhost:3306/devdb
+#
+# CLI Access:
+#   docker exec -it dev-mysql mysql -u devuser -pdevpass devdb
+# =============================================================================
