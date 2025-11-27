@@ -1,0 +1,105 @@
+# =============================================================================
+# RabbitMQ Development Message Broker
+# Purpose: Single RabbitMQ container with management UI for local development
+# =============================================================================
+
+services:
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: ${RABBITMQ_CONTAINER_NAME:-dev-rabbitmq}
+    restart: unless-stopped
+    hostname: ${RABBITMQ_HOSTNAME:-rabbitmq-dev}
+
+    environment:
+      # Authentication
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-devpass}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+      
+      # Cluster configuration (for single node, set unique cookie)
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-SWQOKODSQALRPCLNMEQG}
+      
+      # Optional: Server additional arguments
+      # RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbitmq_management load_definitions \"/etc/rabbitmq/definitions.json\""
+
+    ports:
+      # AMQP protocol port
+      - "5672:5672"
+      # Management UI port
+      - "15672:15672"
+      # Optional: Prometheus metrics port (if plugin enabled)
+      # - "15692:15692"
+
+    volumes:
+      # Named volume for data persistence (queues, messages, user data)
+      - rabbitmq_data:/var/lib/rabbitmq
+      
+      # Named volume for logs
+      - rabbitmq_logs:/var/log/rabbitmq
+      
+      # Optional: Custom configuration file
+      # - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      
+      # Optional: Load queue/exchange definitions on startup
+      # - ./definitions.json:/etc/rabbitmq/definitions.json:ro
+      
+      # Optional: Enable additional plugins
+      # - ./enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+    # Resource limits (adjust for your machine)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  rabbitmq_data:
+    driver: local
+  rabbitmq_logs:
+    driver: local
+
+# =============================================================================
+# Usage:
+#   docker compose -f rabbitmq.yml up -d
+#   docker compose -f rabbitmq.yml down
+#   docker compose -f rabbitmq.yml down -v  # Remove volumes
+#   docker compose -f rabbitmq.yml logs -f  # View logs
+#
+# Management UI:
+#   URL: http://localhost:15672
+#   Username: admin
+#   Password: devpass
+#
+# AMQP Connection:
+#   Host: localhost
+#   Port: 5672
+#   Username: admin
+#   Password: devpass
+#   Virtual Host: /
+#
+# Connection strings:
+#   amqp://admin:devpass@localhost:5672/
+#   amqp://admin:devpass@localhost:5672/%2F  (URL-encoded vhost)
+#
+# Useful commands:
+#   docker exec dev-rabbitmq rabbitmqctl status
+#   docker exec dev-rabbitmq rabbitmqctl list_queues
+#   docker exec dev-rabbitmq rabbitmqctl list_exchanges
+#   docker exec dev-rabbitmq rabbitmqctl list_users
+#   docker exec dev-rabbitmq rabbitmq-plugins list
+#
+# Enable additional plugins:
+#   docker exec dev-rabbitmq rabbitmq-plugins enable rabbitmq_shovel
+#   docker exec dev-rabbitmq rabbitmq-plugins enable rabbitmq_prometheus
+# =============================================================================

@@ -1,0 +1,66 @@
+# =============================================================================
+# Azurite Local Azure Storage Emulator
+# Purpose: Emulate Azure Blob Storage for local development and testing
+# =============================================================================
+
+services:
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: ${AZURITE_CONTAINER_NAME:-dev-azurite}
+    restart: unless-stopped
+
+    # Run blob service only; bind to all interfaces
+    command: >
+      azurite-blob
+      --blobHost 0.0.0.0
+      --blobPort 10000
+      --loose
+
+    environment:
+      # Custom storage accounts (format: "account1:key1[:key2];account2:key1")
+      # Default uses Azurite's well-known dev account
+      AZURITE_ACCOUNTS: ${AZURITE_ACCOUNTS:-devstoreaccount1:Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==}
+
+    ports:
+      - "10000:10000"  # Blob service
+
+    volumes:
+      # Persistent storage for blobs
+      - azurite_data:/data
+
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+volumes:
+  azurite_data:
+    driver: local
+
+# =============================================================================
+# Usage:
+#   docker compose -f azurite.yml up -d
+#   docker compose -f azurite.yml down
+#   docker compose -f azurite.yml down -v  # Remove volumes
+#
+# Connect (default account):
+#   Account Name: devstoreaccount1
+#   Account Key:  Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
+#   Blob Endpoint: http://localhost:10000/devstoreaccount1
+#
+# Connection string (for .NET, Python, etc.):
+#   DefaultEndpointsProtocol=http;
+#   AccountName=devstoreaccount1;
+#   AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;
+#   BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;
+#
+# Notes:
+#   - Supports customization via AZURITE_ACCOUNTS env var
+#   - Format: "account1:key1[:key2];account2:key1"
+#   - Only Blob Storage is enabled; add --queueHost/--tableHost to enable others
+# =============================================================================
